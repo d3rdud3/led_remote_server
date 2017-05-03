@@ -9,7 +9,6 @@ from flask_cors import CORS, cross_origin
 app = Flask(__name__)
 CORS(app)
 
-
 def execute(keyIdent):
     cmd = ["/usr/bin/irsend","SEND_ONCE","led",keyIdent]
     p = subprocess.Popen(cmd, stdout = subprocess.PIPE,
@@ -115,6 +114,10 @@ def bluefour():
 @app.route("/actionfour")
 def actionfour():
     return execute("KEY_PROG4")
+
+@app.route("/alive")
+def heartbeat():
+    return "200"
 
 @app.route("/sunrise")
 def sunrise():
