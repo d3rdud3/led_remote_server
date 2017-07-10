@@ -5,7 +5,6 @@ from flask import request
 import atexit
 import time
 from flask_cors import CORS, cross_origin
-
 app = Flask(__name__)
 CORS(app)
 
@@ -21,10 +20,12 @@ scheduler = BackgroundScheduler()
 
 @app.route("/on")
 def on():
+    setLightEnabledState(True)
     return execute("KEY_POWER")
 
 @app.route("/off")
 def off():
+    setLightEnabledState(False)
     return execute("KEY_POWER2")
 
 @app.route("/brightnessup")
@@ -121,42 +122,46 @@ def heartbeat():
 
 @app.route("/sunrise")
 def sunrise():
-    #start on
-    on()
-    #red color
-    red()
+    with open("/home/pi/piremote/enabled.props", "r") as infile:
+        for line in infile:
+            if(line == "enabled"):
+                #start on
+                on()
+                #red color
+                red()
 
-    #brightness down max
-    for num in range(0,20):
-        time.sleep(.5)
-        brightnessdown()
+                #brightness down max
+                for num in range(0,20):
+                    time.sleep(.5)
+                    brightnessdown()
 
-    #brightnessup slow
-    for num in range(0,3):
-        time.sleep(1.5)
-        brightnessup()
+                #brightnessup slow
+                for num in range(0,3):
+                    time.sleep(1.5)
+                    brightnessup()
 
-    #orange
-    time.sleep(1)
-    redtwo();
+                #orange
+                time.sleep(1)
+                redtwo();
 
-    # brightnessup slow
-    for num in range(0,4):
-        time.sleep(1.5)
-        brightnessup()
+                # brightnessup slow
+                for num in range(0,4):
+                    time.sleep(1.5)
+                    brightnessup()
 
-    #yellow
-    time.sleep(1)
-    redthree()
+                #yellow
+                time.sleep(1)
+                redthree()
 
-    # brightnessup slow
-    for num in range(0,6):
-       time.sleep(1.5)
-       brightnessup()
+                # brightnessup slow
+                for num in range(0,6):
+                   time.sleep(1.5)
+                   brightnessup()
 
-    # daylight
-    time.sleep(60)
-    return white()
+                # daylight
+                time.sleep(60)
+                return white()
+    return ""		
 
 # schedule new timer
 def reschedule(hour,min):
@@ -167,15 +172,63 @@ def reschedule(hour,min):
 @app.route("/sunrisetime", methods=['POST'])
 def sunrisetime():
     request_data = request.get_json()
-    file = open("remote.props","w")
+    file = open("/home/pi/piremote/remote.props","w")
     file.write(request_data['time'])
     file.close()
     readprops()
     return "200"
 
+# set sunrise time
+@app.route("/setEnabledState", methods=['POST'])
+def setEnabledState():
+    print(request)
+    request_data = request.get_json()
+    print(request_data)
+    if(request_data['disable'] == 'enable'):
+        file = open("/home/pi/piremote/enabled.props", "w")
+        file.write("enabled")
+        file.close()
+    if(request_data['disable'] == "disable"):
+        file = open("/home/pi/piremote/enabled.props", "w")
+        file.write("disabled")
+        file.close()
+    return "200"
+
+# set persistent light state
+def setLightEnabledState(state):
+    if(state==True):
+        file = open("/home/pi/piremote/light_enabled.props", "w")
+        file.write("enabled")
+        file.close()
+    else:
+        file = open("/home/pi/piremote/light_enabled.props", "w")
+        file.write("disabled")
+        file.close()
+
+# set sunrise time
+@app.route("/timerState")
+def sunrisetimeState():
+    with open("/home/pi/piremote/remote.props", "r") as infile:
+        for line in infile:
+            return line
+
+# set sunrise time
+@app.route("/lightState")
+def enabledLightState():
+    with open("/home/pi/piremote/light_enabled.props", "r") as infile:
+        for line in infile:
+            return line
+
+# set sunrise time
+@app.route("/enabledState")
+def enabledState():
+    with open("/home/pi/piremote/enabled.props", "r") as infile:
+        for line in infile:
+            return line
+
 # read props and set new scheduler
 def readprops():
-    with open("remote.props", "r") as infile:
+    with open("/home/pi/piremote/remote.props", "r") as infile:
         for line in infile:
             items = line.split(":")
             reschedule(items[0],items[1])
@@ -185,7 +238,7 @@ atexit.register(lambda: scheduler.shutdown())
 
 if __name__ == "__main__":
 #    request_data = request.get_json()
-    file = open("remote.props", "w")
+    file = open("/home/pi/piremote/remote.props", "w")
     file.write("6:00")
     file.close()
     scheduler.start()
